@@ -1,3 +1,3 @@
-print("hello from my AWS Devops Docker application!")
-# CI test
-Webhook test
+print("Hello from my AWS DevOps Docker application!")
+print("GitHub -> Jenkins -> Docker CI pipeline is working!")
+
