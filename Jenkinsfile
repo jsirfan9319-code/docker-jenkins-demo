@@ -37,19 +37,12 @@ pipeline {
             }
         }
 
-       stage('Docker Run') {
-    steps {
-        sh '''
-            docker stop docker-jenkins-demo || true
-            docker rm docker-jenkins-demo || true
-
-            docker run -d \
-                --name docker-jenkins-demo \
-                -p 5000:5000 \
-                ${DOCKER_IMAGE}:latest
-        '''
+        stage('Docker Run') {
+            steps {
+                sh 'docker run --rm ${DOCKER_IMAGE}:latest'
+            }
+        }
     }
-}
 
     post {
         success {
