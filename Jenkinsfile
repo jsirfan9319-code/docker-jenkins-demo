@@ -37,13 +37,25 @@ pipeline {
             }
         }
 
-        stage('Docker Run') {
-            steps {
-                sh 'docker run --rm ${DOCKER_IMAGE}:latest'
-            }
-        }
-    }
+       stage('Docker Run') {
+    steps {
+        sh '''
+            docker rm -f docker-jenkins-demo-container 2>/dev/null || true
 
+            docker run -d \
+                --name docker-jenkins-demo-container \
+                -p 5000:5000 \
+                ${DOCKER_IMAGE}:latest
+
+            sleep 5
+
+            curl -f http://localhost:5000
+
+            docker stop docker-jenkins-demo-container
+            docker rm docker-jenkins-demo-container
+        '''
+    }
+}
     post {
         success {
             echo 'GitHub -> Jenkins -> Docker Build -> Docker Hub Push -> Docker Run SUCCESS!'
