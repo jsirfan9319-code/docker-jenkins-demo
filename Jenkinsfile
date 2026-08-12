@@ -37,17 +37,12 @@ pipeline {
             }
         }
 
-    stage('Docker Hub Push') {
-    steps {
-        // your existing Docker Hub push code
+        stage('Docker Run') {
+            steps {
+                sh 'docker run --rm ${DOCKER_IMAGE}:latest'
+            }
+        }
     }
-}
-
-stage('Docker Run') {
-    steps {
-        sh 'docker run --rm ${DOCKER_IMAGE}:latest'
-    }
-}
 
     post {
         success {
