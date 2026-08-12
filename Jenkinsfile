@@ -37,15 +37,17 @@ pipeline {
             }
         }
 
-        stage('Docker Run') {
-            steps {
-                sh '''
-                    docker rm -f docker-jenkins-demo || true
-                    docker run -d --name docker-jenkins-demo ${DOCKER_IMAGE}:latest
-                '''
-            }
-        }
+    stage('Docker Hub Push') {
+    steps {
+        // your existing Docker Hub push code
     }
+}
+
+stage('Docker Run') {
+    steps {
+        sh 'docker run --rm ${DOCKER_IMAGE}:latest'
+    }
+}
 
     post {
         success {
