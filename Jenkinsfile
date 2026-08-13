@@ -40,19 +40,17 @@ pipeline {
         stage('Docker Run') {
             steps {
                 sh '''
-                    docker rm -f docker-jenkins-demo-container 2>/dev/null || true
+                    docker rm -f docker-jenkins-demo-container || true
 
                     docker run -d \
                         --name docker-jenkins-demo-container \
                         -p 5000:5000 \
+                        --restart unless-stopped \
                         ${DOCKER_IMAGE}:latest
 
                     sleep 5
 
                     curl -f http://localhost:5000
-
-                    docker stop docker-jenkins-demo-container
-                    docker rm docker-jenkins-demo-container
                 '''
             }
         }
