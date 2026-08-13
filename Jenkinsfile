@@ -3,16 +3,15 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'jsirfan9319/docker-jenkins-demo'
-        IMAGE_TAG = "build-${BUILD_NUMBER}"
     }
 
     stages {
 
         stage('Test') {
             steps {
-                echo "Jenkins pipeline is working!"
+                echo 'Jenkins pipeline is working!'
                 echo "Build Number: ${BUILD_NUMBER}"
-                echo "Docker Image: ${DOCKER_IMAGE}:${IMAGE_TAG}"
+                echo "Docker Image: ${DOCKER_IMAGE}:build-${BUILD_NUMBER}"
             }
         }
 
@@ -20,9 +19,8 @@ pipeline {
             steps {
                 sh '''
                     docker build \
-                    -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
-                    -t ${DOCKER_IMAGE}:latest \
-                    .
+                      -t ${DOCKER_IMAGE}:build-${BUILD_NUMBER} \
+                      -t ${DOCKER_IMAGE}:latest .
                 '''
             }
         }
@@ -38,10 +36,10 @@ pipeline {
                 ]) {
                     sh '''
                         echo "$DOCKER_PASSWORD" | docker login \
-                            -u "$DOCKER_USERNAME" \
-                            --password-stdin
+                          -u "$DOCKER_USERNAME" \
+                          --password-stdin
 
-                        docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+                        docker push ${DOCKER_IMAGE}:build-${BUILD_NUMBER}
                         docker push ${DOCKER_IMAGE}:latest
 
                         docker logout
@@ -50,20 +48,33 @@ pipeline {
             }
         }
 
-        stage('Docker Run') {
+        stage('Deploy') {
             steps {
                 sh '''
+                    echo "Deploying Docker image..."
+
                     docker rm -f docker-jenkins-demo-container || true
+
+                    docker pull ${DOCKER_IMAGE}:build-${BUILD_NUMBER}
 
                     docker run -d \
                         --name docker-jenkins-demo-container \
                         -p 5000:5000 \
                         --restart unless-stopped \
-                        ${DOCKER_IMAGE}:${IMAGE_TAG}
+                        ${DOCKER_IMAGE}:build-${BUILD_NUMBER}
+                '''
+            }
+        }
 
+        stage('Health Check') {
+            steps {
+                sh '''
                     sleep 5
 
                     curl -f http://localhost:5000
+
+                    echo ""
+                    echo "Application health check PASSED!"
                 '''
             }
         }
@@ -73,7 +84,7 @@ pipeline {
         success {
             echo "=========================================="
             echo "PIPELINE SUCCESS"
-            echo "Image: ${DOCKER_IMAGE}:${IMAGE_TAG}"
+            echo "Image: ${DOCKER_IMAGE}:build-${BUILD_NUMBER}"
             echo "Latest: ${DOCKER_IMAGE}:latest"
             echo "=========================================="
         }
