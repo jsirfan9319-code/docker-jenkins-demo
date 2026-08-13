@@ -3,19 +3,27 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = 'jsirfan9319/docker-jenkins-demo'
+        IMAGE_TAG = "build-${BUILD_NUMBER}"
     }
 
     stages {
 
         stage('Test') {
             steps {
-                echo 'Jenkins pipeline is working!'
+                echo "Jenkins pipeline is working!"
+                echo "Build Number: ${BUILD_NUMBER}"
+                echo "Docker Image: ${DOCKER_IMAGE}:${IMAGE_TAG}"
             }
         }
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t ${DOCKER_IMAGE}:latest .'
+                sh '''
+                    docker build \
+                    -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
+                    -t ${DOCKER_IMAGE}:latest \
+                    .
+                '''
             }
         }
 
@@ -29,8 +37,13 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                        echo "$DOCKER_PASSWORD" | docker login \
+                            -u "$DOCKER_USERNAME" \
+                            --password-stdin
+
+                        docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
                         docker push ${DOCKER_IMAGE}:latest
+
                         docker logout
                     '''
                 }
@@ -46,7 +59,7 @@ pipeline {
                         --name docker-jenkins-demo-container \
                         -p 5000:5000 \
                         --restart unless-stopped \
-                        ${DOCKER_IMAGE}:latest
+                        ${DOCKER_IMAGE}:${IMAGE_TAG}
 
                     sleep 5
 
@@ -58,11 +71,15 @@ pipeline {
 
     post {
         success {
-            echo 'GitHub -> Jenkins -> Docker Build -> Docker Hub Push -> Docker Run -> SUCCESS!'
+            echo "=========================================="
+            echo "PIPELINE SUCCESS"
+            echo "Image: ${DOCKER_IMAGE}:${IMAGE_TAG}"
+            echo "Latest: ${DOCKER_IMAGE}:latest"
+            echo "=========================================="
         }
 
         failure {
-            echo 'Pipeline FAILED. Check the console output.'
+            echo "Pipeline FAILED. Check the console output."
         }
     }
 }
