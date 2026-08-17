@@ -3,4 +3,15 @@ venv/
 .gitignore
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+terraform-aws-project/
+*.tf
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+Jenkinsfile
 README.md
