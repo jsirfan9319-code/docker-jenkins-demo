@@ -12,8 +12,13 @@ pipeline {
         stage('Terraform Checkout') {
             steps {
                 dir('terraform-aws-project') {
-                    git branch: 'main',
-                        url: 'https://github.com/jsirfan9319-code/terraform-aws-project.git'
+                    sh '''
+                        if [ ! -d .git ]; then
+                            git clone https://github.com/jsirfan9319-code/terraform-aws-project.git .
+                        else
+                            git pull --ff-only origin main
+                        fi
+                    '''
                 }
             }
         }
@@ -36,14 +41,14 @@ pipeline {
 
         stage('Terraform Plan') {
             steps {
-        dir('terraform-aws-project') {
-            sh '''
-                SSH_CIDR=$(curl -4 -s ifconfig.me)/32
-                /snap/bin/terraform plan -input=false -var="ssh_allowed_cidr=$SSH_CIDR"
-            '''
+                dir('terraform-aws-project') {
+                    sh '''
+                        SSH_CIDR=$(curl -4 -s ifconfig.me)/32
+                        /snap/bin/terraform plan -input=false -var="ssh_allowed_cidr=$SSH_CIDR"
+                    '''
+                }
+            }
         }
-    }
-}
 
         stage('Docker Build') {
             steps {
@@ -53,11 +58,14 @@ pipeline {
 
         stage('Docker Run') {
             steps {
-        sh '''
-            docker rm -f docker-jenkins-demo || true
-            docker run -d --name docker-jenkins-demo -p 5000:5000 docker-jenkins-demo
-            sleep 5
-            curl -f http://localhost:5000
-        '''
+                sh '''
+                    docker rm -f docker-jenkins-demo || true
+                    docker run -d --name docker-jenkins-demo -p 5000:5000 docker-jenkins-demo
+                    sleep 5
+                    curl -f http://localhost:5000
+                '''
+            }
+        }
     }
 }
+    
