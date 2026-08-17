@@ -48,7 +48,7 @@ pipeline {
             steps {
                 dir('terraform-aws-project') {
                     sh '''
-                        SSH_CIDR=$(curl -4 -s ifconfig.me)
+                        SSH_CIDR=$(curl -4 -s ifconfig.me)/32
                         /snap/bin/terraform apply -auto-approve -input=false -var="ssh_allowed_cidr=$SSH_CIDR"
                     '''
                 }
