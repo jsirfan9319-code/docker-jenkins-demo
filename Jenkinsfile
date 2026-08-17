@@ -44,6 +44,16 @@ pipeline {
                 }
             }
         }
+        stage('Terraform Apply') {
+            steps {
+                dir('terraform-aws-project') {
+                    sh '''
+                        SSH_CIDR=$(curl -4 -s ifconfig.me)
+                        /snap/bin/terraform apply -auto-approve -input=false -var="ssh_allowed_cidr=$SSH_CIDR"
+                    '''
+                }
+            }
+        }
 
         stage('Docker Build') {
             steps {
