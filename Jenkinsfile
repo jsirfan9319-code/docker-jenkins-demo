@@ -1,96 +1,63 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_IMAGE = 'jsirfan9319/docker-jenkins-demo'
-    }
-
     stages {
 
         stage('Test') {
             steps {
                 echo 'Jenkins pipeline is working!'
-                echo "Build Number: ${BUILD_NUMBER}"
-                echo "Docker Image: ${DOCKER_IMAGE}:build-${BUILD_NUMBER}"
             }
         }
 
-        stage('Docker Build') {
+        stage('Terraform Checkout') {
             steps {
-                sh '''
-                    docker build \
-                      -t ${DOCKER_IMAGE}:build-${BUILD_NUMBER} \
-                      -t ${DOCKER_IMAGE}:latest .
-                '''
-            }
-        }
-
-        stage('Docker Hub Push') {
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub-credentials',
-                        usernameVariable: 'DOCKER_USERNAME',
-                        passwordVariable: 'DOCKER_PASSWORD'
-                    )
-                ]) {
-                    sh '''
-                        echo "$DOCKER_PASSWORD" | docker login \
-                          -u "$DOCKER_USERNAME" \
-                          --password-stdin
-
-                        docker push ${DOCKER_IMAGE}:build-${BUILD_NUMBER}
-                        docker push ${DOCKER_IMAGE}:latest
-
-                        docker logout
-                    '''
+                dir('terraform-aws-project') {
+                    git branch: 'main',
+                        url: 'https://github.com/jsirfan9319-code/terraform-aws-project.git'
                 }
             }
         }
 
-        stage('Deploy') {
+        stage('Terraform Init') {
             steps {
-                sh '''
-                    echo "Deploying Docker image..."
-
-                    docker rm -f docker-jenkins-demo-container || true
-
-                    docker pull ${DOCKER_IMAGE}:build-${BUILD_NUMBER}
-
-                    docker run -d \
-                        --name docker-jenkins-demo-container \
-                        -p 5000:5000 \
-                        --restart unless-stopped \
-                        ${DOCKER_IMAGE}:build-${BUILD_NUMBER}
-                '''
+                dir('terraform-aws-project') {
+                    sh '/snap/bin/terraform init -input=false'
+                }
             }
         }
 
-        stage('Health Check') {
+        stage('Terraform Validate') {
             steps {
-                sh '''
-                    sleep 5
-
-                    curl -f http://localhost:5000
-
-                    echo ""
-                    echo "Application health check PASSED!"
-                '''
+                dir('terraform-aws-project') {
+                    sh '/snap/bin/terraform validate'
+                }
             }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+        dir('terraform-aws-project') {
+            sh '''
+                SSH_CIDR=$(curl -4 -s ifconfig.me)/32
+                /snap/bin/terraform plan -input=false -var="ssh_allowed_cidr=$SSH_CIDR"
+            '''
         }
     }
+}
 
-    post {
-        success {
-            echo "=========================================="
-            echo "PIPELINE SUCCESS"
-            echo "Image: ${DOCKER_IMAGE}:build-${BUILD_NUMBER}"
-            echo "Latest: ${DOCKER_IMAGE}:latest"
-            echo "=========================================="
+        stage('Docker Build') {
+            steps {
+                sh 'docker build -t docker-jenkins-demo .'
+            }
         }
 
-        failure {
-            echo "Pipeline FAILED. Check the console output."
-        }
+        stage('Docker Run') {
+            steps {
+        sh '''
+            docker rm -f docker-jenkins-demo || true
+            docker run -d --name docker-jenkins-demo -p 5000:5000 docker-jenkins-demo
+            sleep 5
+            curl -f http://localhost:5000
+        '''
     }
 }
