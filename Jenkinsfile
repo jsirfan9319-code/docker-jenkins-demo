@@ -11,17 +11,12 @@ pipeline {
 
         stage('Terraform Checkout') {
             steps {
-                dir('terraform-aws-project') {
-                    sh '''
-                        if [ ! -d .git ]; then
-                            git clone https://github.com/jsirfan9319-code/terraform-aws-project.git .
-                        else
-                            git pull --ff-only origin main
-                        fi
-                    '''
-                }
-            }
-        }
+        sh '''
+            rm -rf terraform-aws-project
+            git clone https://github.com/jsirfan9319-code/terraform-aws-project.git terraform-aws-project
+        '''
+    }
+}
 
         stage('Terraform Init') {
             steps {
