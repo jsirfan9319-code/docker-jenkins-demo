@@ -107,7 +107,7 @@ data "aws_ami" "ubuntu" {
 resource "aws_instance" "devops_ec2" {
   ami                         = data.aws_ami.ubuntu.id
   instance_type               = var.instance_type
-  key_name                    = "jenkins-deploy-key"
+  key_name                    = "jenkins-deploy-key-new"
   subnet_id                   = aws_subnet.public_subnet.id
   vpc_security_group_ids      = [aws_security_group.devops_sg.id]
   associate_public_ip_address = true
