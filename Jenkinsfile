@@ -14,6 +14,24 @@ pipeline {
             }
         }
 
+stage('Terraform Destroy Previous') {
+    steps {
+        script {
+            if (fileExists('terraform-aws-project/terraform.tfstate')) {
+                dir('terraform-aws-project') {
+                    sh '''
+                        set -e
+                        SSH_CIDR=$(curl -4 -s ifconfig.me)/32
+                        /snap/bin/terraform destroy -input=false -auto-approve -var="ssh_allowed_cidr=$SSH_CIDR" || true
+                    '''
+                }
+            } else {
+                echo "No previous state found, skipping destroy."
+            }
+        }
+    }
+}
+
         stage('Terraform Checkout') {
             steps {
                 sh '''
