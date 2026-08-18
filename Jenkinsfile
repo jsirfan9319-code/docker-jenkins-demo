@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        SSH_USER = 'ubuntu'
         APP_NAME = 'docker-jenkins-demo'
         APP_PORT = '5000'
     }
