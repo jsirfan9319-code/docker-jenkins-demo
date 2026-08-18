@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DEPLOY_HOST = '13.233.4.91'
         APP_NAME = 'docker-jenkins-demo'
         APP_PORT = '5000'
+        DEPLOY_HOST = ''
     }
 
     stages {
@@ -27,7 +27,9 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 dir('terraform-aws-project') {
-                    sh '/snap/bin/terraform init -input=false'
+                    sh '''
+                        /snap/bin/terraform init -input=false
+                    '''
                 }
             }
         }
@@ -35,7 +37,9 @@ pipeline {
         stage('Terraform Validate') {
             steps {
                 dir('terraform-aws-project') {
-                    sh '/snap/bin/terraform validate'
+                    sh '''
+                        /snap/bin/terraform validate
+                    '''
                 }
             }
         }
@@ -44,10 +48,16 @@ pipeline {
             steps {
                 dir('terraform-aws-project') {
                     sh '''
+                        set -e
+
                         SSH_CIDR=$(curl -4 -s ifconfig.me)/32
+
+                        echo "Jenkins public IP:"
+                        echo "$SSH_CIDR"
+
                         /snap/bin/terraform plan \
-                        -input=false \
-                        -var="ssh_allowed_cidr=$SSH_CIDR"
+                            -input=false \
+                            -var="ssh_allowed_cidr=$SSH_CIDR"
                     '''
                 }
             }
@@ -57,12 +67,26 @@ pipeline {
             steps {
                 dir('terraform-aws-project') {
                     sh '''
+                        set -e
+
                         SSH_CIDR=$(curl -4 -s ifconfig.me)/32
+
+                        echo "Applying Terraform infrastructure..."
+
                         /snap/bin/terraform apply \
-                        -auto-approve \
-                        -input=false \
-                        -var="ssh_allowed_cidr=$SSH_CIDR"
+                            -input=false \
+                            -auto-approve \
+                            -var="ssh_allowed_cidr=$SSH_CIDR"
                     '''
+
+                    script {
+                        env.DEPLOY_HOST = sh(
+                            script: '/snap/bin/terraform output -raw ec2_public_ip',
+                            returnStdout: true
+                        ).trim()
+
+                        echo "Terraform EC2 public IP: ${env.DEPLOY_HOST}"
+                    }
                 }
             }
         }
@@ -70,7 +94,17 @@ pipeline {
         stage('Docker Build') {
             steps {
                 sh '''
-                    docker build -t ${APP_NAME}:latest .
+                    set -e
+
+                    echo "Building Docker image..."
+
+                    docker build \
+                        -t ${APP_NAME}:latest \
+                        .
+
+                    echo "Docker image built successfully."
+
+                    docker images ${APP_NAME}
                 '''
             }
         }
@@ -78,47 +112,85 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 withCredentials([
-                    file(
+                    sshUserPrivateKey(
                         credentialsId: 'ec2-deploy-key-file',
-                        variable: 'SSH_KEY'
+                        keyFileVariable: 'SSH_KEY',
+                        usernameVariable: 'SSH_USER'
                     )
                 ]) {
                     sh '''
+                        set -e
+
+                        echo "========================================"
+                        echo "Deploying to EC2"
+                        echo "========================================"
+
+                        echo "EC2 Host: ${DEPLOY_HOST}"
+                        echo "SSH User: ${SSH_USER}"
+
                         echo "Preparing Docker image..."
 
-                        docker save ${APP_NAME}:latest -o ${APP_NAME}.tar
+                        docker save ${APP_NAME}:latest \
+                            -o ${APP_NAME}.tar
 
                         echo "Transferring Docker image to ${DEPLOY_HOST}..."
 
                         scp -i "$SSH_KEY" \
                             -o StrictHostKeyChecking=no \
                             ${APP_NAME}.tar \
-                            ubuntu@${DEPLOY_HOST}:/tmp/${APP_NAME}.tar
+                            ${SSH_USER}@${DEPLOY_HOST}:/tmp/${APP_NAME}.tar
 
-                        echo "Deploying application..."
+                        echo "Docker image transferred successfully."
 
-                        ssh -i "$SSH_KEY" \
-                            -o StrictHostKeyChecking=no \
-                            ubuntu@${DEPLOY_HOST} \
-                            "docker load -i /tmp/${APP_NAME}.tar && \
-                             docker rm -f ${APP_NAME} || true"
+                        echo "Connecting to EC2..."
 
                         ssh -i "$SSH_KEY" \
                             -o StrictHostKeyChecking=no \
-                            ubuntu@${DEPLOY_HOST} \
-                            "docker run -d \
-                             --name ${APP_NAME} \
-                             -p ${APP_PORT}:${APP_PORT} \
-                             ${APP_NAME}:latest"
+                            ${SSH_USER}@${DEPLOY_HOST} << EOF
 
-                        ssh -i "$SSH_KEY" \
-                            -o StrictHostKeyChecking=no \
-                            ubuntu@${DEPLOY_HOST} \
-                            "rm -f /tmp/${APP_NAME}.tar"
+                            set -e
+
+                            echo "Loading Docker image..."
+
+                            docker load \
+                                -i /tmp/${APP_NAME}.tar
+
+                            echo "Stopping old container..."
+
+                            docker stop ${APP_NAME} 2>/dev/null || true
+
+                            echo "Removing old container..."
+
+                            docker rm ${APP_NAME} 2>/dev/null || true
+
+                            echo "Starting new container..."
+
+                            docker run -d \
+                                --name ${APP_NAME} \
+                                -p ${APP_PORT}:${APP_PORT} \
+                                --restart unless-stopped \
+                                ${APP_NAME}:latest
+
+                            echo "Removing temporary Docker image file..."
+
+                            rm -f /tmp/${APP_NAME}.tar
+
+                            echo "Checking running container..."
+
+                            docker ps \
+                                --filter "name=${APP_NAME}"
+
+                            echo "Deployment on EC2 completed."
+
+EOF
+
+                        echo "Removing local Docker tar file..."
 
                         rm -f ${APP_NAME}.tar
 
-                        echo "Deployment completed successfully."
+                        echo "========================================"
+                        echo "EC2 deployment completed"
+                        echo "========================================"
                     '''
                 }
             }
@@ -127,26 +199,43 @@ pipeline {
         stage('Verify Deployment') {
             steps {
                 withCredentials([
-                    file(
+                    sshUserPrivateKey(
                         credentialsId: 'ec2-deploy-key-file',
-                        variable: 'SSH_KEY'
+                        keyFileVariable: 'SSH_KEY',
+                        usernameVariable: 'SSH_USER'
                     )
                 ]) {
                     sh '''
-                        echo "Checking Docker container..."
+                        set -e
+
+                        echo "========================================"
+                        echo "Verifying Deployment"
+                        echo "========================================"
 
                         sleep 5
 
+                        echo "Checking Docker container..."
+
                         ssh -i "$SSH_KEY" \
                             -o StrictHostKeyChecking=no \
-                            ubuntu@${DEPLOY_HOST} \
+                            ${SSH_USER}@${DEPLOY_HOST} \
                             "docker ps --filter name=${APP_NAME}"
 
-                        echo "Testing application..."
+                        echo "Testing application from EC2..."
 
-                        curl -f http://${DEPLOY_HOST}:${APP_PORT}
+                        ssh -i "$SSH_KEY" \
+                            -o StrictHostKeyChecking=no \
+                            ${SSH_USER}@${DEPLOY_HOST} \
+                            "curl -f http://localhost:${APP_PORT}"
 
-                        echo "Application verification successful."
+                        echo ""
+
+                        echo "========================================"
+                        echo "APPLICATION HEALTH CHECK PASSED"
+                        echo "========================================"
+
+                        echo "Server: ${DEPLOY_HOST}"
+                        echo "URL: http://${DEPLOY_HOST}:${APP_PORT}"
                     '''
                 }
             }
@@ -154,21 +243,33 @@ pipeline {
     }
 
     post {
+
         success {
-            echo '========================================'
-            echo 'DEPLOYMENT SUCCESSFUL'
-            echo '========================================'
-            echo "Application: ${APP_NAME}"
-            echo "Server: ${DEPLOY_HOST}"
-            echo "Port: ${APP_PORT}"
-            echo "URL: http://${DEPLOY_HOST}:${APP_PORT}"
+            echo '''
+========================================
+PIPELINE SUCCESS
+========================================
+Docker image built successfully.
+Terraform infrastructure deployed.
+Docker application deployed to EC2.
+Application health check passed.
+========================================
+'''
+            echo "Application URL: http://${DEPLOY_HOST}:${APP_PORT}"
         }
 
         failure {
-            echo '========================================'
-            echo 'DEPLOYMENT FAILED'
-            echo '========================================'
-            echo 'Check the failed stage in Console Output.'
+            echo '''
+========================================
+DEPLOYMENT FAILED
+========================================
+Check the failed stage in Console Output.
+========================================
+'''
+        }
+
+        always {
+            echo "Jenkins pipeline completed."
         }
     }
 }
