@@ -134,9 +134,9 @@ pipeline {
 
                     test -f "${SSH_KEY}"
 
-                    sudo -u jenkins test -r "${SSH_KEY}"
+                    test -r "${SSH_KEY}"
 
-                    sudo -u jenkins ssh \
+                    ssh \
                         -i "${SSH_KEY}" \
                         -o StrictHostKeyChecking=no \
                         -o UserKnownHostsFile=/dev/null \
