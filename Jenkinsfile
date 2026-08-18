@@ -4,7 +4,6 @@ pipeline {
     environment {
         APP_NAME = 'docker-jenkins-demo'
         APP_PORT = '5000'
-        DEPLOY_HOST = ''
     }
 
     stages {
