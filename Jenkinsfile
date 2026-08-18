@@ -196,6 +196,37 @@ pipeline {
             }
         }
 
+    stage('Install Docker on EC2') {
+        steps {
+            sh '''
+                set -e
+
+                echo "========================================"
+                echo "Preparing Docker on EC2"
+                echo "========================================"
+
+                ssh \
+                    -i "${SSH_KEY}" \
+                    -o StrictHostKeyChecking=no \
+                    -o UserKnownHostsFile=/dev/null \
+                    -o ConnectTimeout=15 \
+                    "${SSH_USER}@${DEPLOY_HOST}" \
+                    'if command -v docker >/dev/null 2>&1; then
+                        echo "Docker is already installed"
+                        docker --version
+                    else
+                        echo "Installing Docker..."
+                        sudo apt-get update -y
+                        sudo apt-get install -y docker.io
+                        sudo systemctl enable --now docker
+                        sudo docker --version
+                    fi'
+
+                echo "Docker is ready on EC2"
+            '''
+        }
+    }
+
         stage('Deploy to EC2') {
             steps {
                 sh '''
