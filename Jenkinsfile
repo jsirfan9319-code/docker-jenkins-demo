@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DEPLOY_HOST = '65.2.184.41'
+        DEPLOY_HOST = '13.233.4.91'
         APP_NAME = 'docker-jenkins-demo'
         APP_PORT = '5000'
     }
