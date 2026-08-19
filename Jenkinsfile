@@ -277,16 +277,16 @@ pipeline {
 
                         echo "Loading Docker image..."
 
-                        docker load \
+                       sudo docker load \
                             -i /tmp/${APP_NAME}.tar
 
                         echo "Stopping old container..."
 
-                        docker rm -f ${APP_NAME} 2>/dev/null || true
+                       sudo docker rm -f ${APP_NAME} 2>/dev/null || true
 
                         echo "Starting new container..."
 
-                        docker run -d \
+                       sudo docker run -d \
                             --name ${APP_NAME} \
                             --restart unless-stopped \
                             -p ${APP_PORT}:${APP_PORT} \
@@ -298,7 +298,7 @@ pipeline {
 
                         echo ""
                         echo "Running containers:"
-                        docker ps --filter "name=${APP_NAME}"
+                       sudo docker ps --filter "name=${APP_NAME}"
 
 EOF
 
@@ -327,7 +327,7 @@ EOF
                         -o UserKnownHostsFile=/dev/null \
                         -o ConnectTimeout=15 \
                         "${SSH_USER}@${DEPLOY_HOST}" \
-                        "docker ps --filter name=${APP_NAME}"
+                        "sudo docker ps --filter name=${APP_NAME}"
 
                     echo ""
                     echo "Testing application from EC2..."
