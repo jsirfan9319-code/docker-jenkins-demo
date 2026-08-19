@@ -81,7 +81,7 @@ The deployed application returns:
 
 ```text
 Hello from AWS DevOps! Version 4 - Automatic CI/CD deployment is working!
-
+```
 ## ✅ Project Status
 
 The CI/CD pipeline has been successfully implemented and tested.
@@ -100,3 +100,4 @@ The deployed Flask application is available on AWS EC2.
 
 ```text
 Hello from AWS DevOps! Version 4 - Automatic CI/CD deployment is working!
+```
