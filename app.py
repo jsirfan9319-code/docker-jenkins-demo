@@ -11,7 +11,7 @@ REQUEST_COUNT = Counter(
 @app.route("/")
 def home():
     REQUEST_COUNT.inc()
-    return "Hello from AWS DevOps! Version 2 - Automatic CI/CD deployment is working!"
+    return "Hello from AWS DevOps! Version 3 - Automatic CI/CD deployment is working!"
 
 @app.route("/metrics")
 def metrics():
