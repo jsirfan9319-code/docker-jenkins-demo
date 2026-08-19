@@ -72,7 +72,7 @@ Jenkins
 Automated CI/CD Pipeline
    ↓
 AWS EC2
-
+```
 ## 🧪 Deployment Verification
 
 After deployment, Jenkins verifies the Docker container and checks that the application is responding successfully.
