@@ -1,37 +1,74 @@
-# AWS DevOps CI/CD Deployment Pipeline
+## 🔄 CI/CD Pipeline
 
-## 📌 Project Overview
+The Jenkins pipeline performs the following stages:
 
-This project demonstrates an end-to-end DevOps CI/CD pipeline that automatically builds, tests, and deploys a Dockerized application to AWS EC2.
+1. Test
+2. Terraform Init
+3. Terraform Validate
+4. Terraform Plan
+5. Terraform Apply
+6. Get EC2 Host
+7. Verify SSH
+8. Docker Build
+9. Docker Test
+10. Install Docker on EC2
+11. Deploy to EC2
+12. Verify Deployment
 
-A code change pushed to GitHub triggers a Jenkins pipeline through a GitHub Webhook. Jenkins uses Terraform to provision/manage the AWS infrastructure, builds the Docker image, transfers it to the EC2 server, deploys the container, and performs an application health check.
+## 🛠️ Technologies Used
 
-## 🏗️ Architecture
+- AWS EC2
+- Terraform
+- Jenkins
+- Docker
+- Git
+- GitHub
+- GitHub Webhooks
+- Python
+- Flask
+- Ubuntu Linux
+- SSH
+- Bash
+
+## ☁️ AWS Infrastructure
+
+Terraform is used to manage the AWS infrastructure required for the deployment.
+
+The project uses:
+
+- Amazon EC2
+- VPC
+- Public Subnet
+- Security Group
+- SSH access
+- Public IP address
+
+## 🐳 Docker Deployment
+
+Jenkins builds the Docker image and tests it before deployment.
+
+The image is then transferred to the AWS EC2 instance using SCP.
+
+On EC2, the pipeline:
+
+1. Loads the Docker image
+2. Removes the previous container
+3. Starts the new container
+4. Verifies the running container
+
+## 🔗 GitHub Webhook
+
+A GitHub Webhook automatically triggers Jenkins when code is pushed to the repository.
 
 ```text
-Developer
-    |
-    | git push
-    v
-GitHub Repository
-    |
-    | GitHub Webhook
-    v
+Git Push
+   ↓
+GitHub
+   ↓
+GitHub Webhook
+   ↓
 Jenkins
-    |
-    +----------------------+
-    |                      |
-    v                      v
-Terraform              Docker Build
-    |                      |
-    v                      v
-AWS EC2 <------------- Docker Image
-    |
-    v
-Docker Container
-    |
-    v
-Flask Application
-    |
-    v
-HTTP Response
+   ↓
+Automated CI/CD Pipeline
+   ↓
+AWS EC2
